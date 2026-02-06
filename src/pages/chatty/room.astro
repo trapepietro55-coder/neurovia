@@ -1,0 +1,196 @@
+---
+export const prerender = false;
+---
+
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chatty • Room</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body class="chatty">
+  <main class="chatty-wrap">
+    <div class="chatty-bg">
+      <span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span>
+      <svg class="net n1" viewBox="0 0 200 200" aria-hidden="true">
+        <g fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2">
+          <circle cx="40" cy="60" r="6" fill="rgba(255,255,255,.45)"/>
+          <circle cx="150" cy="40" r="6" fill="rgba(255,255,255,.45)"/>
+          <circle cx="120" cy="150" r="6" fill="rgba(255,255,255,.45)"/>
+          <path d="M40 60 L150 40 L120 150 Z"/>
+          <path d="M40 60 L120 150"/>
+        </g>
+      </svg>
+    </div>
+
+    <header class="chatty-header glass">
+      <div>
+        <div class="chatty-kicker">Chatty</div>
+        <h1 class="chatty-title" style="font-size:28px; margin-top:6px;">Stanza</h1>
+        <p class="chatty-sub" id="subtitle">Connessione…</p>
+      </div>
+      <button class="chatty-close" id="leaveBtn" aria-label="Esci">✕</button>
+    </header>
+
+    <section class="chatty-panel glass">
+      <div class="room-top">
+        <div class="pillglass" id="statusPill">—</div>
+        <div class="pillglass" id="roomPill">—</div>
+      </div>
+
+      <div class="message-glass" id="messageBox">
+        <div class="message-placeholder">Nessun messaggio.</div>
+      </div>
+
+      <div class="composer">
+        <input id="text" class="glass-input" placeholder="Scrivi…" autocomplete="off" />
+        <button id="send" class="btn-glass">Invia</button>
+      </div>
+
+      <p class="chatty-help" id="errorBox" style="margin-top:12px; color: rgba(120,20,55,.9);"></p>
+    </section>
+
+    <footer class="chatty-foot">
+      <small>Regola: un messaggio alla volta. Se uno esce, si chiude per entrambi.</small>
+    </footer>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode"); // "create" | "join"
+    const room = params.get("room") || "";
+    const password = sessionStorage.getItem("chatty_password") || "";
+
+    const subtitle = document.getElementById("subtitle");
+    const statusPill = document.getElementById("statusPill");
+    const roomPill = document.getElementById("roomPill");
+    const messageBox = document.getElementById("messageBox");
+    const errorBox = document.getElementById("errorBox");
+    const text = document.getElementById("text");
+    const sendBtn = document.getElementById("send");
+    const leaveBtn = document.getElementById("leaveBtn");
+
+    // UI helpers
+    function setError(msg){
+      errorBox.textContent = msg || "";
+    }
+
+    function setMessage(msg){
+      messageBox.innerHTML = "";
+      if (!msg){
+        const ph = document.createElement("div");
+        ph.className = "message-placeholder";
+        ph.textContent = "Nessun messaggio.";
+        messageBox.appendChild(ph);
+        return;
+      }
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = msg;
+      messageBox.appendChild(bubble);
+    }
+
+    function goBack(){
+      sessionStorage.removeItem("chatty_password");
+      window.location.href = "/chatty";
+    }
+
+    // Basic validation
+    if (!room || !password || (mode !== "create" && mode !== "join")){
+      goBack();
+    }
+
+    roomPill.textContent = "chat: " + room;
+
+    // Connect WS
+    const ws = new WebSocket("ws://localhost:3001");
+
+    ws.addEventListener("open", () => {
+      subtitle.textContent = "Connesso. Verifico…";
+      setError("");
+
+      if (mode === "create"){
+        ws.send(JSON.stringify({ type: "create_private", room, password }));
+      } else {
+        ws.send(JSON.stringify({ type: "join_private", room, password }));
+      }
+    });
+
+    ws.addEventListener("message", (ev) => {
+      let data;
+      try { data = JSON.parse(ev.data); } catch { return; }
+
+      if (data.type === "error"){
+        setError(data.message || "Errore.");
+        subtitle.textContent = "Errore";
+        return;
+      }
+
+      if (data.type === "joined_private"){
+        subtitle.textContent = "Dentro la chat. Attendi l’altro utente…";
+        statusPill.textContent = "1 di 2";
+        setError("");
+        return;
+      }
+
+      if (data.type === "status_private"){
+        statusPill.textContent = `${data.users} di ${data.max}`;
+        return;
+      }
+
+      if (data.type === "start"){
+        subtitle.textContent = "Inizia chat";
+        statusPill.textContent = "2 di 2";
+        setTimeout(() => { subtitle.textContent = "good chatty"; }, 450);
+        return;
+      }
+
+      if (data.type === "system"){
+        subtitle.textContent = data.text || "";
+        return;
+      }
+
+      if (data.type === "message"){
+        // regola: 1 messaggio alla volta -> sostituiamo la bolla
+        setMessage(data.text || "");
+        setError("");
+        return;
+      }
+
+      if (data.type === "closed"){
+        subtitle.textContent = "Chat chiusa";
+        setError("La chat è stata chiusa. Torni alla schermata Chatty.");
+        setTimeout(goBack, 900);
+        return;
+      }
+    });
+
+    ws.addEventListener("close", () => {
+      // se si chiude improvvisamente
+      subtitle.textContent = "Connessione chiusa";
+    });
+
+    function sendMessage(){
+      const t = text.value.trim();
+      if (!t) return;
+      setError("");
+      ws.send(JSON.stringify({ type: "message_private", text: t }));
+      text.value = "";
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    text.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    leaveBtn.addEventListener("click", () => {
+      try { ws.send(JSON.stringify({ type: "leave_private" })); } catch {}
+      try { ws.close(); } catch {}
+      goBack();
+    });
+  </script>
+</body>
+</html>

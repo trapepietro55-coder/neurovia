@@ -1,0 +1,219 @@
+---
+const PB_URL = import.meta.env.PUBLIC_PB_URL;
+---
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin • Neurovia</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body class="page">
+  <header class="page-header container">
+    <a class="back" href="/articoli">← Articoli</a>
+    <h1>Admin Neurovia</h1>
+    <p class="muted">Gestione articoli e categorie</p>
+  </header>
+
+  <main class="container page-main">
+
+    <!-- LOGIN -->
+    <section class="panel" id="loginBox">
+      <h2>Accesso</h2>
+      <p class="muted">Usa le credenziali admin di PocketBase</p>
+
+      <div class="admin-form">
+        <input id="email" type="email" placeholder="Email admin" />
+        <input id="password" type="password" placeholder="Password" />
+        <button id="loginBtn" class="btn">Entra</button>
+        <p class="muted" id="loginMsg"></p>
+      </div>
+    </section>
+
+    <!-- APP -->
+    <section class="panel" id="app" style="display:none;">
+
+      <div class="admin-top">
+        <h2>Dashboard</h2>
+        <button id="logoutBtn" class="btn">Logout</button>
+      </div>
+
+      <!-- CATEGORIE -->
+      <section class="admin-section">
+        <h3>Categorie</h3>
+        <div class="row">
+          <input id="catName" placeholder="Nuova categoria" />
+          <button id="addCat" class="btn">Aggiungi</button>
+        </div>
+        <div id="catList" class="pill-list"></div>
+      </section>
+
+      <!-- ARTICOLI -->
+      <section class="admin-section">
+        <h3>Nuovo articolo</h3>
+
+        <input id="title" placeholder="Titolo articolo" />
+        <select id="category"></select>
+
+        <label class="filebox">
+          Cover
+          <input type="file" id="cover" accept="image/*" />
+        </label>
+
+        <label class="filebox">
+          Immagini (max 10)
+          <input type="file" id="images" accept="image/*" multiple />
+        </label>
+
+        <label class="toggle">
+          <input type="checkbox" id="published" />
+          Pubblicato
+        </label>
+
+        <textarea id="content" placeholder="Scrivi qui l'articolo..."></textarea>
+
+        <button id="createArticle" class="btn">Crea articolo</button>
+        <p class="muted" id="articleMsg"></p>
+      </section>
+
+      <!-- LISTA -->
+      <section class="admin-section">
+        <h3>Articoli esistenti</h3>
+        <div id="articleList"></div>
+      </section>
+
+    </section>
+  </main>
+
+  <script type="module">
+    import PocketBase from "pocketbase";
+
+    const pb = new PocketBase("${PB_URL}");
+
+    const loginBox = document.getElementById("loginBox");
+    const app = document.getElementById("app");
+
+    const email = document.getElementById("email");
+    const password = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const loginMsg = document.getElementById("loginMsg");
+
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    const catName = document.getElementById("catName");
+    const addCat = document.getElementById("addCat");
+    const catList = document.getElementById("catList");
+    const catSelect = document.getElementById("category");
+
+    const title = document.getElementById("title");
+    const content = document.getElementById("content");
+    const cover = document.getElementById("cover");
+    const images = document.getElementById("images");
+    const published = document.getElementById("published");
+    const createBtn = document.getElementById("createArticle");
+    const articleMsg = document.getElementById("articleMsg");
+
+    const articleList = document.getElementById("articleList");
+
+    function showApp(){
+      loginBox.style.display = "none";
+      app.style.display = "block";
+    }
+
+    function showLogin(){
+      loginBox.style.display = "block";
+      app.style.display = "none";
+    }
+
+    async function loadCategories(){
+      const cats = await pb.collection("categories").getFullList({ sort: "name" });
+      catList.innerHTML = "";
+      catSelect.innerHTML = "";
+
+      cats.forEach(c => {
+        const pill = document.createElement("span");
+        pill.className = "pill";
+        pill.textContent = c.name;
+        catList.appendChild(pill);
+
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = c.name;
+        catSelect.appendChild(opt);
+      });
+    }
+
+    async function loadArticles(){
+      const arts = await pb.collection("articles").getFullList({ sort: "-created", expand: "category" });
+      articleList.innerHTML = "";
+
+      arts.forEach(a => {
+        const div = document.createElement("div");
+        div.className = "admin-row";
+        div.innerHTML = `
+          <strong>${a.title}</strong>
+          <span class="muted"> — ${a.expand?.category?.name || ""} • ${a.published ? "Pubblicato" : "Bozza"}</span>
+        `;
+        articleList.appendChild(div);
+      });
+    }
+
+    loginBtn.onclick = async () => {
+      try {
+        await pb.admins.authWithPassword(email.value, password.value);
+        showApp();
+        loadCategories();
+        loadArticles();
+      } catch {
+        loginMsg.textContent = "Credenziali non valide";
+      }
+    };
+
+    logoutBtn.onclick = () => {
+      pb.authStore.clear();
+      showLogin();
+    };
+
+    addCat.onclick = async () => {
+      if(!catName.value) return;
+      await pb.collection("categories").create({ name: catName.value });
+      catName.value = "";
+      loadCategories();
+    };
+
+    createBtn.onclick = async () => {
+      articleMsg.textContent = "";
+
+      const fd = new FormData();
+      fd.append("title", title.value);
+      fd.append("content", content.value);
+      fd.append("category", catSelect.value);
+      fd.append("published", published.checked);
+
+      if(cover.files[0]) fd.append("cover", cover.files[0]);
+      [...images.files].slice(0,10).forEach(f => fd.append("images", f));
+
+      await pb.collection("articles").create(fd);
+
+      title.value = "";
+      content.value = "";
+      published.checked = false;
+      cover.value = "";
+      images.value = "";
+
+      articleMsg.textContent = "Articolo creato";
+      loadArticles();
+    };
+
+    if(pb.authStore.isValid){
+      showApp();
+      loadCategories();
+      loadArticles();
+    }
+  </script>
+
+</body>
+</html>

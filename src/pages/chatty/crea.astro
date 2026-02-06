@@ -1,0 +1,83 @@
+---
+export const prerender = false;
+---
+
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chatty • Crea</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body class="chatty">
+  <main class="chatty-wrap">
+    <div class="chatty-bg">
+      <span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span>
+      <svg class="net n2" viewBox="0 0 220 220" aria-hidden="true">
+        <g fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2">
+          <circle cx="60" cy="70" r="6" fill="rgba(255,255,255,.45)"/>
+          <circle cx="170" cy="80" r="6" fill="rgba(255,255,255,.45)"/>
+          <circle cx="110" cy="170" r="6" fill="rgba(255,255,255,.45)"/>
+          <path d="M60 70 L170 80 L110 170 Z"/>
+          <path d="M60 70 L110 170"/>
+        </g>
+      </svg>
+    </div>
+
+    <header class="chatty-header glass">
+      <div>
+        <div class="chatty-kicker">Chatty</div>
+        <h1 class="chatty-title" style="font-size:34px;">Crea</h1>
+        <p class="chatty-sub">Crea una chat privata. Scegli nome e password.</p>
+      </div>
+      <a class="chatty-close" href="/chatty" aria-label="Torna indietro">←</a>
+    </header>
+
+    <section class="chatty-panel glass">
+      <div class="form-grid">
+        <label class="field">
+          <span>Nome chat</span>
+          <input id="room" class="glass-input" placeholder="es. neurovia-01" autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span>Password</span>
+          <input id="pass" class="glass-input" type="password" placeholder="••••••••" />
+        </label>
+      </div>
+
+      <div class="chatty-actions" style="margin-top:16px;">
+        <p class="chatty-help" id="msg"></p>
+        <button class="btn-glass" id="go">Crea</button>
+      </div>
+    </section>
+
+    <footer class="chatty-foot">
+      <small>Dopo la creazione, attendi che l’altra persona entri.</small>
+    </footer>
+  </main>
+
+  <script>
+    const room = document.getElementById("room");
+    const pass = document.getElementById("pass");
+    const msg = document.getElementById("msg");
+    const go = document.getElementById("go");
+
+    go.addEventListener("click", () => {
+      msg.textContent = "";
+      const r = room.value.trim();
+      const p = pass.value.trim();
+
+      if (!r || !p) {
+        msg.textContent = "Inserisci nome e password.";
+        return;
+      }
+
+      window.location.href = `/chatty/room?mode=create&room=${encodeURIComponent(r)}`;
+      sessionStorage.setItem("chatty_password", p);
+    });
+  </script>
+</body>
+</html>

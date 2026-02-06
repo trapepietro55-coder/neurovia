@@ -1,0 +1,69 @@
+---
+export const prerender = false;
+
+const PB = import.meta.env.PUBLIC_PB_URL;
+const { id } = Astro.params;
+
+let a: any = null;
+
+try {
+  const res = await fetch(`${PB}/api/collections/articles/records/${id}?expand=category`);
+  if (res.ok) a = await res.json();
+} catch (e) {
+  console.error(e);
+}
+
+if (!a) {
+  return new Response("Articolo non trovato (o PocketBase non avviato).", { status: 404 });
+}
+
+const catName = a.expand?.category?.name ?? "Categoria";
+const coverUrl = a.cover ? `${PB}/api/files/articles/${a.id}/${a.cover}` : null;
+const gallery: string[] = Array.isArray(a.images)
+  ? a.images.map((f: string) => `${PB}/api/files/articles/${a.id}/${f}`)
+  : [];
+---
+
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{a.title} • Neurovia</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body class="page">
+  <header class="page-header container">
+    <a class="back" href="/articoli">← Articoli</a>
+
+    <div class="article-head">
+      <div class="article-meta">
+        <span class="pill">{catName}</span>
+        <span class="muted small">{new Date(a.created).toLocaleDateString("it-IT")}</span>
+      </div>
+
+      <h1>{a.title}</h1>
+    </div>
+
+    {coverUrl ? <img class="article-cover" src={coverUrl} alt="" /> : null}
+  </header>
+
+  <main class="container article">
+    <div class="article-content">
+      {String(a.content ?? "")
+        .split("\n")
+        .map((line) => (line.trim() ? <p>{line}</p> : <p>&nbsp;</p>))}
+    </div>
+
+    {gallery.length ? (
+      <section class="article-gallery">
+        <h2>Immagini</h2>
+        <div class="gallery-grid">
+          {gallery.map((src) => <img src={src} alt="" loading="lazy" />)}
+        </div>
+      </section>
+    ) : null}
+  </main>
+</body>
+</html>

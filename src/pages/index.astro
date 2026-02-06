@@ -1,0 +1,224 @@
+---
+export const prerender = false;
+---
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neurovia</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <!-- BRAND TOP-LEFT (slide-in) -->
+  <div class="corner-brand" id="cornerBrand" aria-label="Neurovia">
+    <span>N</span><span>E</span><span>U</span><span>R</span><span>O</span><span>V</span><span>I</span><span>A</span>
+  </div>
+
+  <!-- PALLINI MENU (top-right, senza cerchio) -->
+  <button class="dots-btn" id="dotsBtn" aria-label="Apri menu">
+    <span class="dot d1"></span>
+    <span class="dot d2"></span>
+    <span class="dot d3"></span>
+  </button>
+
+  <!-- OVERLAY MENU -->
+  <div class="menu-overlay" id="menuOverlay" aria-hidden="true">
+    <div class="menu-panel">
+      <div class="menu-title">Menu</div>
+
+      <a href="#cose" class="menu-link">Cos’è Neurovia</a>
+      <a href="#chi-sono" class="menu-link">Chi sono</a>
+      <a href="/articoli" class="menu-link">Articoli</a>
+
+      <!-- CHATTTY (rosa) -->
+      <a href="/chatty" class="menu-link chatty-link">
+        <span class="chatty-dot" aria-hidden="true"></span>
+        Chatty
+      </a>
+
+      <a href="#contatti" class="menu-link">Contatti</a>
+
+      <button class="menu-close" id="menuClose">Chiudi</button>
+    </div>
+  </div>
+
+  <!-- INTRO CINEMATICO -->
+  <section class="intro" id="intro" aria-label="Introduzione Neurovia">
+    <aside class="band" id="band">
+      <div class="band-inner">
+        <div class="band-text stacked" aria-label="Neurovia">
+          <span>N</span><span>E</span><span>U</span><span>R</span><span>O</span><span>V</span><span>I</span><span>A</span>
+        </div>
+        <div class="band-mark" aria-hidden="true"></div>
+      </div>
+    </aside>
+
+    <div class="intro-stage">
+      <div class="stage-sticky">
+        <div class="stage-visual" id="visual">
+          <div class="photo layer a" aria-hidden="true"></div>
+          <div class="photo layer b" aria-hidden="true"></div>
+
+          <div class="visual-overlay" aria-hidden="true"></div>
+          <div class="grain" aria-hidden="true"></div>
+
+          <div class="center-copy">
+            <div class="copy-pre" id="preText">Sei pronto a cambiare?</div>
+            <div class="copy-main" id="mainText">Un passo alla volta.</div>
+          </div>
+
+          <div class="scroll-hint" aria-hidden="true">scroll ↓</div>
+        </div>
+      </div>
+
+      <div class="intro-scrollspace"></div>
+    </div>
+  </section>
+
+  <!-- CUORE DEL SITO -->
+  <main class="site" id="home">
+    <div class="container">
+      <section id="cose" class="section">
+        <h2>Cos’è Neurovia</h2>
+        <p class="muted">
+          Neurovia è uno spazio divulgativo che unisce attività fisica e benessere mentale.
+          Qui trovi spiegazioni chiare, riferimenti scientifici e strumenti pratici per orientarti meglio tra stress, ansia e regolazione del sistema nervoso.
+        </p>
+      </section>
+
+      <section id="chi-sono" class="section">
+        <h2>Chi sono</h2>
+        <p class="muted">
+          Sono Pietro, laureato in Scienze Motorie (L-22) e studente LM-67. Mi interessa l’intersezione tra movimento, umore e stress.
+          Questo sito nasce per rendere la scienza comprensibile e utile.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Articoli</h2>
+        <p class="muted">Vai alla sezione articoli per categorie e contenuti completi.</p>
+        <a class="btn" href="/articoli">Apri Articoli</a>
+      </section>
+
+      <section id="contatti" class="section">
+        <h2>Contatti</h2>
+        <p class="muted">Per domande o collaborazioni:</p>
+        <a class="btn" href="mailto:info@neurovia.it">info@neurovia.it</a>
+      </section>
+
+      <footer class="footer">
+        <div class="muted">© 2026 Neurovia</div>
+      </footer>
+    </div>
+  </main>
+
+  <script is:inline>
+    // ===== MENU DOTS =====
+    const dotsBtn = document.getElementById("dotsBtn");
+    const overlay = document.getElementById("menuOverlay");
+    const closeBtn = document.getElementById("menuClose");
+
+    function openMenu(){
+      overlay.classList.add("open");
+      overlay.setAttribute("aria-hidden","false");
+      dotsBtn.classList.add("is-open");
+    }
+    function closeMenu(){
+      overlay.classList.remove("open");
+      overlay.setAttribute("aria-hidden","true");
+      dotsBtn.classList.remove("is-open");
+    }
+
+    dotsBtn.addEventListener("click", openMenu);
+    closeBtn.addEventListener("click", closeMenu);
+    overlay.addEventListener("click", (e)=>{ if(e.target === overlay) closeMenu(); });
+    document.querySelectorAll(".menu-link").forEach(a=> a.addEventListener("click", closeMenu));
+
+    // ===== SCROLL CINEMATICO =====
+    const intro = document.getElementById("intro");
+    const band = document.getElementById("band");
+    const preText = document.getElementById("preText");
+    const mainText = document.getElementById("mainText");
+    const cornerBrand = document.getElementById("cornerBrand");
+
+    const layerA = document.querySelector(".photo.layer.a");
+    const layerB = document.querySelector(".photo.layer.b");
+
+    function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+    function getProgress(){
+      const r = intro.getBoundingClientRect();
+      const vh = window.innerHeight || 1;
+      const total = r.height - vh;
+      if(total <= 1) return 0;
+      const scrolled = -r.top;
+      return clamp01(scrolled / total);
+    }
+
+    function apply(progress){
+      const aOpacity = 1 - progress;
+      const bOpacity = progress;
+
+      const aScale = 1.07 - progress * 0.05;
+      const bScale = 1.02 + progress * 0.06;
+
+      const aY = progress * -10;
+      const bY = (1 - progress) * 12;
+
+      layerA.style.opacity = aOpacity.toFixed(3);
+      layerB.style.opacity = bOpacity.toFixed(3);
+      layerA.style.transform = `scale(${aScale}) translateY(${aY}px)`;
+      layerB.style.transform = `scale(${bScale}) translateY(${bY}px)`;
+
+      if(progress < 0.33){
+        preText.textContent = "Sei pronto a cambiare?";
+        mainText.textContent = "Un passo alla volta.";
+      } else if(progress < 0.66){
+        preText.textContent = "Un passo alla volta.";
+        mainText.textContent = "Respira. Muoviti. Ritrova equilibrio.";
+      } else {
+        preText.textContent = "Fallo con Neurovia.";
+        mainText.textContent = "La tua strada verso equilibrio e chiarezza.";
+      }
+
+      const showCorner = progress > 0.72;
+      if(showCorner){
+        cornerBrand.classList.add("show");
+        band.classList.add("fade");
+      } else {
+        cornerBrand.classList.remove("show");
+        band.classList.remove("fade");
+      }
+    }
+
+    let ticking = false;
+    function onScroll(){
+      if(!ticking){
+        ticking = true;
+        requestAnimationFrame(()=>{
+          apply(getProgress());
+          ticking = false;
+        });
+      }
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    onScroll();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+

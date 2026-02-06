@@ -1,0 +1,87 @@
+---
+export const prerender = false;
+---
+
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chatty • Entra</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body class="chatty">
+  <main class="chatty-wrap">
+    <div class="chatty-bg">
+      <span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span>
+      <svg class="net n1" viewBox="0 0 200 200" aria-hidden="true">
+        <g fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2">
+          <circle cx="40" cy="60" r="6" fill="rgba(255,255,255,.55)"/>
+          <circle cx="150" cy="40" r="6" fill="rgba(255,255,255,.55)"/>
+          <circle cx="120" cy="150" r="6" fill="rgba(255,255,255,.55)"/>
+          <circle cx="50" cy="150" r="6" fill="rgba(255,255,255,.55)"/>
+          <path d="M40 60 L150 40 L120 150 L50 150 Z"/>
+          <path d="M40 60 L120 150"/>
+          <path d="M150 40 L50 150"/>
+        </g>
+      </svg>
+    </div>
+
+    <header class="chatty-header glass">
+      <div>
+        <div class="chatty-kicker">Chatty</div>
+        <h1 class="chatty-title" style="font-size:34px;">Entra</h1>
+        <p class="chatty-sub">Inserisci nome chat e password.</p>
+      </div>
+      <a class="chatty-close" href="/chatty" aria-label="Torna indietro">←</a>
+    </header>
+
+    <section class="chatty-panel glass">
+      <div class="form-grid">
+        <label class="field">
+          <span>Nome chat</span>
+          <input id="room" class="glass-input" placeholder="es. neurovia-01" autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span>Password</span>
+          <input id="pass" class="glass-input" type="password" placeholder="••••••••" />
+        </label>
+      </div>
+
+      <div class="chatty-actions" style="margin-top:16px;">
+        <p class="chatty-help" id="msg"></p>
+        <button class="btn-glass" id="go">Entra</button>
+      </div>
+    </section>
+
+    <footer class="chatty-foot">
+      <small>Se una persona esce, la chat si chiude per entrambi.</small>
+    </footer>
+  </main>
+
+  <script>
+    const room = document.getElementById("room");
+    const pass = document.getElementById("pass");
+    const msg = document.getElementById("msg");
+    const go = document.getElementById("go");
+
+    go.addEventListener("click", () => {
+      msg.textContent = "";
+      const r = room.value.trim();
+      const p = pass.value.trim();
+
+      if (!r || !p) {
+        msg.textContent = "Inserisci nome e password.";
+        return;
+      }
+
+      // per ora passiamo i dati via querystring (temporaneo).
+      // nello step WebSocket useremo questi valori per fare join.
+      window.location.href = `/chatty/room?mode=join&room=${encodeURIComponent(r)}`;
+      sessionStorage.setItem("chatty_password", p);
+    });
+  </script>
+</body>
+</html>

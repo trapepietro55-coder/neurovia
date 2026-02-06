@@ -1,0 +1,217 @@
+---
+export const prerender = true;
+---
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatty – Neurovia</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body class="chatty-page">
+  <a href="/" class="chatty-back" aria-label="Torna a Neurovia">
+  ←
+</a>
+
+  <main class="chatty-wrapper">
+    <h1 class="chatty-title">Chatty</h1>
+    <p class="chatty-sub">Chat effimere. Un confronto alla volta.</p>
+
+    <!-- SWITCH -->
+    <div class="droplet-switch" id="switcher">
+      <div class="tabs" role="tablist" aria-label="Modalità Chatty">
+        <button class="tab is-active" data-target="entra" aria-selected="true" role="tab" type="button">
+          Entra
+        </button>
+        <button class="tab" data-target="crea" aria-selected="false" role="tab" type="button">
+          Crea
+        </button>
+        <button class="tab" data-target="tema" aria-selected="false" role="tab" type="button">
+          Tema
+        </button>
+      </div>
+
+      <!-- GOCCIA (UNA SOLA) -->
+      <div class="droplet" id="droplet" aria-hidden="true"></div>
+    </div>
+
+    <!-- TESTO -->
+    <p class="mode-text" id="modeText">
+      Entra in una chat esistente con nome e password.
+    </p>
+
+    <!-- CTA -->
+    <a class="chatty-btn" id="goBtn" href="/chatty/entra">
+      Continua
+    </a>
+  </main>
+
+  <script is:inline>
+    const tabs = Array.from(document.querySelectorAll(".tab"));
+    const droplet = document.getElementById("droplet");
+    const modeText = document.getElementById("modeText");
+    const goBtn = document.getElementById("goBtn");
+    const switcher = document.getElementById("switcher");
+
+    const modes = {
+      entra: {
+        href: "/chatty/entra",
+        text: "Entra in una chat esistente con nome e password."
+      },
+      crea: {
+        href: "/chatty/crea",
+        text: "Crea una chat privata scegliendo nome e password."
+      },
+      tema: {
+        href: "/chatty/tema",
+        text: "Crea o cerca una chat a tema. Due parlano, altri osservano."
+      }
+    };
+
+    let activeIndex = 0;
+    let isDragging = false;
+    let startX = 0;
+    let startDropletX = 0;
+
+    function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+    function getCenters(){
+      const parent = switcher.getBoundingClientRect();
+      return tabs.map(btn => {
+        const r = btn.getBoundingClientRect();
+        return (r.left - parent.left) + (r.width / 2);
+      });
+    }
+
+    function setDropletToTab(index, animate = true){
+      const btn = tabs[index];
+      const rect = btn.getBoundingClientRect();
+      const parent = switcher.getBoundingClientRect();
+      const x = (rect.left - parent.left) + (rect.width / 2);
+
+      droplet.style.transition = animate ? "transform .25s ease, width .25s ease" : "none";
+      droplet.style.setProperty("--x", x + "px");
+      droplet.style.setProperty("--w", rect.width + "px");
+    }
+
+    function setModeByIndex(index, animate = true){
+      activeIndex = index;
+
+      tabs.forEach((t, i) => {
+        const on = i === index;
+        t.classList.toggle("is-active", on);
+        t.setAttribute("aria-selected", on ? "true" : "false");
+      });
+
+      setDropletToTab(index, animate);
+
+      const key = tabs[index].dataset.target;
+      modeText.textContent = modes[key].text;
+      goBtn.setAttribute("href", modes[key].href);
+    }
+
+    function closestIndexFromX(x){
+      const centers = getCenters();
+      let closest = 0;
+      let min = Infinity;
+
+      centers.forEach((c, i) => {
+        const d = Math.abs(c - x);
+        if(d < min){ min = d; closest = i; }
+      });
+
+      return closest;
+    }
+
+    // Click su tab
+    tabs.forEach((btn, i) => {
+      btn.addEventListener("click", () => setModeByIndex(i));
+    });
+
+    // Drag goccia (mouse)
+    droplet.addEventListener("mousedown", (e) => {
+      isDragging = true;
+      startX = e.clientX;
+
+      const style = getComputedStyle(droplet);
+      startDropletX = parseFloat(style.getPropertyValue("--x")) || 0;
+
+      droplet.style.transition = "none";
+      e.preventDefault();
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if(!isDragging) return;
+
+      const dx = e.clientX - startX;
+      const nextX = startDropletX + dx;
+
+      const centers = getCenters();
+      const minX = Math.min(...centers);
+      const maxX = Math.max(...centers);
+
+      droplet.style.setProperty("--x", clamp(nextX, minX, maxX) + "px");
+    });
+
+    window.addEventListener("mouseup", () => {
+      if(!isDragging) return;
+      isDragging = false;
+
+      const style = getComputedStyle(droplet);
+      const x = parseFloat(style.getPropertyValue("--x")) || 0;
+
+      const i = closestIndexFromX(x);
+      setModeByIndex(i, true);
+    });
+
+    // Touch (telefono)
+    droplet.addEventListener("touchstart", (e) => {
+      const t = e.touches[0];
+      isDragging = true;
+      startX = t.clientX;
+
+      const style = getComputedStyle(droplet);
+      startDropletX = parseFloat(style.getPropertyValue("--x")) || 0;
+
+      droplet.style.transition = "none";
+      e.preventDefault();
+    }, { passive: false });
+
+    window.addEventListener("touchmove", (e) => {
+      if(!isDragging) return;
+      const t = e.touches[0];
+
+      const dx = t.clientX - startX;
+      const nextX = startDropletX + dx;
+
+      const centers = getCenters();
+      const minX = Math.min(...centers);
+      const maxX = Math.max(...centers);
+
+      droplet.style.setProperty("--x", clamp(nextX, minX, maxX) + "px");
+    }, { passive: true });
+
+    window.addEventListener("touchend", () => {
+      if(!isDragging) return;
+      isDragging = false;
+
+      const style = getComputedStyle(droplet);
+      const x = parseFloat(style.getPropertyValue("--x")) || 0;
+
+      const i = closestIndexFromX(x);
+      setModeByIndex(i, true);
+    });
+
+    // Re-sync se ridimensioni finestra
+    window.addEventListener("resize", () => setModeByIndex(activeIndex, false));
+
+    // Init
+    setModeByIndex(0, false);
+  </script>
+</body>
+</html>
+
+

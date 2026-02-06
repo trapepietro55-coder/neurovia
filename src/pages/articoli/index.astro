@@ -1,0 +1,88 @@
+---
+const PB = import.meta.env.PUBLIC_PB_URL;
+
+let categories = [];
+let articles = [];
+
+try {
+  const catRes = await fetch(`${PB}/api/collections/categories/records?perPage=200&sort=name`);
+  const catJson = await catRes.json();
+  categories = catJson.items || [];
+
+  const artRes = await fetch(`${PB}/api/collections/articles/records?perPage=200&expand=category&sort=-created`);
+  const artJson = await artRes.json();
+  articles = artJson.items || [];
+} catch (e) {
+  console.error(e);
+}
+---
+
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Articoli • Neurovia</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body class="page">
+  <header class="page-header container">
+    <a class="back" href="/">← Home</a>
+    <h1>Articoli</h1>
+    <p class="muted">Esplora i contenuti per categoria.</p>
+  </header>
+
+  <main class="container page-main">
+    <section class="categories">
+      <button class="cat-btn is-active" data-cat="__all">Tutti</button>
+      {categories.map((c) => (
+        <button class="cat-btn" data-cat={c.id}>{c.name}</button>
+      ))}
+    </section>
+
+    {articles.length === 0 ? (
+      <div class="panel">
+        <strong>Nessun articolo pubblicato</strong>
+        <p class="muted">Controlla che PocketBase sia attivo e che almeno un articolo abbia <code>published=true</code>.</p>
+      </div>
+    ) : (
+      <section class="post-grid" id="grid">
+        {articles.map((a) => {
+          const catName = a.expand?.category?.name ?? "Categoria";
+          const coverUrl = a.cover ? `${PB}/api/files/articles/${a.id}/${a.cover}` : null;
+
+          return (
+            <article class="post-card" data-cat={a.category}>
+              <a class="post-link" href={`/articoli/${a.id}`}>
+                {coverUrl ? <img class="post-cover" src={coverUrl} alt="" loading="lazy" /> : null}
+                <div class="post-body">
+                  <div class="post-meta">
+                    <span class="pill">{catName}</span>
+                    <span class="muted small">{new Date(a.created).toLocaleDateString("it-IT")}</span>
+                  </div>
+                  <h2 class="post-title">{a.title}</h2>
+                </div>
+              </a>
+            </article>
+          );
+        })}
+      </section>
+    )}
+  </main>
+
+  <script is:inline>
+    const btns = document.querySelectorAll(".cat-btn");
+    const cards = document.querySelectorAll(".post-card");
+    btns.forEach(b => b.addEventListener("click", () => {
+      btns.forEach(x => x.classList.remove("is-active"));
+      b.classList.add("is-active");
+      const cat = b.dataset.cat;
+      cards.forEach(c => {
+        c.style.display = (cat === "__all" || c.dataset.cat === cat) ? "" : "none";
+      });
+    }));
+  </script>
+</body>
+</html>
+
